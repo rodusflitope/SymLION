@@ -14,7 +14,15 @@
 #include <ATen/cuda/CUDAContext.h>
 
 #define CHECK_INPUT(x) 
+#include <c10/cuda/CUDAException.h>
 
+#ifndef CHECK_EQ
+#define CHECK_EQ(x, y) TORCH_CHECK((x) == (y), "Check failed: " #x " == " #y)
+#endif
+
+#ifndef THCudaCheck
+#define THCudaCheck(err) C10_CUDA_CHECK(err)
+#endif
 
 /********************************
 * Forward kernel for approxmatch
