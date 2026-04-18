@@ -12,10 +12,15 @@ import importlib
 import argparse
 from loguru import logger
 from comet_ml import Experiment
-import torch
-import numpy as np
 import os
 import sys
+
+# Windows local fast-test fixes
+if os.name == 'nt':
+    os.environ['USE_LIBUV'] = '0'
+
+import torch
+import numpy as np
 import torch.distributed as dist
 from torch.multiprocessing import Process
 from default_config import cfg as config

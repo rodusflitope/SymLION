@@ -1153,8 +1153,9 @@ def init_processes(rank, size, fn, args, config):
 
     logger.info('init_process: rank={}, world_size={}', rank, size)
     torch.cuda.set_device(args.local_rank)
+    backend_type = 'gloo' if os.name == 'nt' else 'nccl'
     dist.init_process_group(
-        backend='nccl', init_method='env://', rank=rank, world_size=size)
+        backend=backend_type, init_method='env://', rank=rank, world_size=size)
     fn(args, config)
     logger.info('barrier: rank={}, world_size={}', rank, size)
     dist.barrier()

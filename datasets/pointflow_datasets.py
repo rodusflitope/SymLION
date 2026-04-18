@@ -153,9 +153,13 @@ class ShapeNet15kPointClouds(Dataset):
             # NOTE: [subd] here is synset id
             sub_path = os.path.join(root_dir, subd, self.split)
             if not os.path.isdir(sub_path):
-                print("Directory missing : %s " % (sub_path))
-                raise ValueError('check the data path')
-                continue
+                # Fallback for nested '_' folder structure
+                fallback_path = os.path.join(root_dir, subd, "_", self.split)
+                if os.path.isdir(fallback_path):
+                    sub_path = fallback_path
+                else:
+                    print("Directory missing : %s " % (sub_path))
+                    raise ValueError('check the data path')
 
             if True:
                 all_mids = []
@@ -182,6 +186,9 @@ class ShapeNet15kPointClouds(Dataset):
                         assert(os.path.exists(render_img_path)), f'render img path not find: {render_img_path}'
 
                     obj_fname = os.path.join(root_dir, subd, mid + ".npy")
+                    if not os.path.exists(obj_fname):
+                        obj_fname = os.path.join(root_dir, subd, "_", mid + ".npy")
+
                     point_cloud = np.load(obj_fname)  # (15k, 3)
                     self.all_points.append(point_cloud[np.newaxis, ...])
                     self.cate_idx_lst.append(cate_idx)
