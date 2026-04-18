@@ -21,22 +21,23 @@
 * When opening an issue, please add @ZENGXH so that I can reponse faster! 
 
 ## Install 
-* Dependencies: 
-    * CUDA 11.6 
-    
-* Setup the environment 
-    Install from conda file  
-    ``` 
-        conda env create --name lion_env --file=env.yaml 
-        conda activate lion_env 
+* Dependencies:
+    * Conda + Python 3.10
+    * CUDA runtime via `pytorch-cuda=12.1`
 
-        # Install some other packages 
-        pip install git+https://github.com/openai/CLIP.git 
-
-        # build some packages first (optional)
-        python build_pkg.py
+* Setup the environment
     ```
-    Tested with conda version 22.9.0
+    conda env create --file env.yaml
+    conda activate lion_env
+    python -m pip install --upgrade pip
+    python build_pkg.py
+    ```
+    `env.yaml` installs core conda packages and resolves pip packages from `requirements.txt`.
+
+* Optional rendering dependencies (not required for training/evaluation)
+    ```
+    pip install mitsuba OpenEXR Imath
+    ```
 
 * Using Docker
     * build the docker with `bash ./docker/build_docker.sh`
@@ -73,6 +74,38 @@ run `python demo.py`, will load the released text2shape model on hugging face an
     * put the rendered data as `./data/shapenet_render/` or edit the `clip_forge_image` entry in `./datasets/data_path.py`
     * the img data will be read under `./datasets/pointflow_datasets.py` with the `render_img_path`, you may need to cutomize this variable depending of the folder structure 
 * run `bash ./script/train_prior_clip.sh $NGPU` 
+
+### quick local smoke test (6GB VRAM)
+* yes, it is possible to run a small sanity run on 1 GPU with low memory settings by reducing:
+    * `data.batch_size`, `data.tr_max_sample_points`, `ddpm.num_steps`, `sde.num_channels_dae`, `trainer.epochs`
+* there is currently no clean flag to cap number of shapes per split.
+* `data.dataset_scale` appears in configs but dataset loading enforces `scale == 1` in `datasets/pointflow_datasets.py`.
+
+Minimal VAE smoke run:
+```
+python train_dist.py --num_process_per_node 1 \
+    trainer.type trainers.hvae_trainer \
+    data.cates chair \
+    data.batch_size 2 data.batch_size_test 2 data.num_workers 0 \
+    data.tr_max_sample_points 512 data.te_max_sample_points 512 \
+    trainer.epochs 1 \
+    ddpm.num_steps 1 ddpm.ema 0 \
+    viz.log_freq -1 viz.viz_freq -1 viz.val_freq -1 \
+    cmt smoke_vae_6gb
+```
+
+Minimal prior smoke run (requires a VAE checkpoint):
+```
+python train_dist.py --num_process_per_node 1 \
+    --config ./lion_ckpt/unconditional/chair/cfg.yml \
+    sde.vae_checkpoint ./lion_ckpt/unconditional/chair/checkpoints/vae_only.pt \
+    data.batch_size 2 data.batch_size_test 2 data.num_workers 0 \
+    data.tr_max_sample_points 512 data.te_max_sample_points 512 \
+    ddpm.num_steps 100 sde.num_channels_dae 512 sde.num_cell_per_scale_dae 4 \
+    trainer.epochs 1 num_val_samples 4 vis_latent_point 0 \
+    viz.log_freq -1 viz.viz_freq -1 viz.val_freq -1 viz.save_freq 500 \
+    cmt smoke_prior_6gb
+```
 
 ### (Optional) monitor exp 
 * (tested) use comet-ml: need to add a file `.comet_api` under this `LION` folder, example of the `.comet_api` file: 

@@ -9,11 +9,16 @@ build_path = cur_path.replace('chamfer3D', 'tmp')
 os.makedirs(build_path, exist_ok=True)
 
 from torch.utils.cpp_extension import load
-chamfer_3D = load(name="chamfer_3D",
-      sources=[
-          "/".join(os.path.abspath(__file__).split('/')[:-1] + ["chamfer_cuda.cpp"]),
-          "/".join(os.path.abspath(__file__).split('/')[:-1] + ["chamfer3D.cu"]),
-          ], build_directory=build_path)
+
+_src_dir = os.path.dirname(os.path.abspath(__file__))
+
+chamfer_3D = load(
+    name="chamfer_3D",
+    sources=[
+        os.path.join(_src_dir, "chamfer_cuda.cpp"),
+        os.path.join(_src_dir, "chamfer3D.cu")
+    ]
+)
 
 #chamfer_found = importlib.find_loader("chamfer_3D") is not None
 #if not chamfer_found:
