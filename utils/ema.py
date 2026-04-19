@@ -34,6 +34,12 @@ class EMA(Optimizer):
         self.apply_ema = self.ema_decay > 0.
         logger.info('[EMA] apply={}', self.apply_ema)
         self.optimizer = opt
+
+        # --- FIX PARA PYTORCH 2.X ---
+        # Inicializa la clase base para crear los diccionarios de hooks faltantes
+        super(EMA, self).__init__(opt.param_groups, opt.defaults)
+        # ----------------------------
+        
         self.state = opt.state
         self.param_groups = opt.param_groups
 
