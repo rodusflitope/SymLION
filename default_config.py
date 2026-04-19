@@ -77,6 +77,15 @@ cfg.latent_pts.style_encoder = 'models.shapelatent_modules.PointNetPlusEncoder'
 cfg.latent_pts.use_linear_for_adagn = 0
 # cfg.latent_pts.weight_kl_glb = 1.0 # kl ratio of the global latent
 
+# symmetry configuration
+cfg.symmetry = CN()
+cfg.symmetry.enabled = False
+cfg.symmetry.axis = 0 # 0 for X, 1 for Y, 2 for Z
+cfg.symmetry.metric = 'chamfer'
+cfg.symmetry.soft = CN()
+cfg.symmetry.soft.recon_weight = 0.0
+cfg.symmetry.soft.latent_weight = 0.0
+
 # shapelatent:
 cfg.has_shapelatent = 1 
 cfg.shapelatent = CN()

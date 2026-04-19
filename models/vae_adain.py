@@ -238,7 +238,38 @@ class Model(nn.Module):
                 self.input_dim, batch_size).mean()
         rec_loss = loss_0 
         output['print/loss_0'] = loss_0
-        output['rec_loss'] = rec_loss 
+        
+        # Soft Symmetry constraints for VAE
+        if hasattr(self.args, 'symmetry') and self.args.symmetry.enabled:
+            sym_axis = self.args.symmetry.axis # 0 for x, 1 for y, 2 for z
+            
+            # 1. Soft reconstruction symmetry: L_sym_rec = d(x_hat, R(x_hat))
+            if self.args.symmetry.soft.recon_weight > 0:
+                x_0_pred_ref = x_0_pred.clone()
+                x_0_pred_ref[..., sym_axis] = -x_0_pred_ref[..., sym_axis]
+                
+                sym_rec_loss = loss_fn(x_0_pred, x_0_pred_ref, self.args.symmetry.metric, self.input_dim, batch_size)
+                if isinstance(sym_rec_loss, dict) or type(sym_rec_loss) is tuple:
+                    sym_rec_loss = sym_rec_loss[0] if type(sym_rec_loss) is tuple else sym_rec_loss['loss']
+                elif torch.is_tensor(sym_rec_loss):
+                    sym_rec_loss = sym_rec_loss.mean()
+
+                output['print/sym_rec_loss'] = sym_rec_loss.item() if hasattr(sym_rec_loss, 'item') else sym_rec_loss
+                rec_loss = rec_loss + sym_rec_loss * self.args.symmetry.soft.recon_weight
+
+            # 2. Soft latent symmetry: ||mu_g(x) - mu_g(R(x))||^2
+            if self.args.symmetry.soft.latent_weight > 0:
+                # global z_mu from current x
+                z_mu_global = output['latent_list'][0][1]
+                
+                inputs_ref = inputs.clone()
+                inputs_ref[..., sym_axis] = -inputs_ref[..., sym_axis]
+                
+                dist_ref = self.encode_global(inputs_ref, class_label=class_label)
+                
+                sym_lat_loss = torch.nn.functional.mse_loss(z_mu_global, dist_ref.mu)
+                output['print/sym_lat_loss'] = sym_lat_loss.item()
+                rec_loss = rec_loss + sym_lat_loss * self.args.symmetry.soft.latent_weight
 
         # Loss
         ## z_global, z_sigma, z_mu = output['z_global'], output['z_sigma'], output['z_mu']
