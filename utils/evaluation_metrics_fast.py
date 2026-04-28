@@ -29,7 +29,7 @@ import torch.nn.functional as F
 
 
 def distChamferCUDA_l1(pred, target, points_dim=3):
-    import models.pvcnn.functional as pvcnn_fun
+    import third_party.pvcnn.functional as pvcnn_fun
     # expect B.2048.3 and B.2048.3
     B = pred.shape[0]
     CHECKDIM(pred, 2, points_dim)
