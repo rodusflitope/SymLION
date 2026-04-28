@@ -85,6 +85,8 @@ cfg.symmetry.metric = 'chamfer'
 cfg.symmetry.soft = CN()
 cfg.symmetry.soft.recon_weight = 0.0
 cfg.symmetry.soft.latent_weight = 0.0
+cfg.symmetry.soft.recon_loss_type = ''
+cfg.symmetry.soft.latent_loss_reduction = 'mean'
 
 # shapelatent:
 cfg.has_shapelatent = 1 

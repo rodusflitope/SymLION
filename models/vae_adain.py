@@ -247,8 +247,11 @@ class Model(nn.Module):
             if self.args.symmetry.soft.recon_weight > 0:
                 x_0_pred_ref = x_0_pred.clone()
                 x_0_pred_ref[..., sym_axis] = -x_0_pred_ref[..., sym_axis]
+                sym_rec_loss_type = self.args.symmetry.metric
+                if hasattr(self.args.symmetry.soft, 'recon_loss_type') and len(self.args.symmetry.soft.recon_loss_type):
+                    sym_rec_loss_type = self.args.symmetry.soft.recon_loss_type
                 
-                sym_rec_loss = loss_fn(x_0_pred, x_0_pred_ref, self.args.symmetry.metric, self.input_dim, batch_size)
+                sym_rec_loss = loss_fn(x_0_pred, x_0_pred_ref, sym_rec_loss_type, self.input_dim, batch_size)
                 if isinstance(sym_rec_loss, dict) or type(sym_rec_loss) is tuple:
                     sym_rec_loss = sym_rec_loss[0] if type(sym_rec_loss) is tuple else sym_rec_loss['loss']
                 elif torch.is_tensor(sym_rec_loss):
@@ -267,7 +270,17 @@ class Model(nn.Module):
                 
                 dist_ref = self.encode_global(inputs_ref, class_label=class_label)
                 
-                sym_lat_loss = torch.nn.functional.mse_loss(z_mu_global, dist_ref.mu)
+                latent_loss_reduction = 'mean'
+                if hasattr(self.args.symmetry.soft, 'latent_loss_reduction'):
+                    latent_loss_reduction = self.args.symmetry.soft.latent_loss_reduction
+                if latent_loss_reduction == 'mean':
+                    sym_lat_loss = torch.nn.functional.mse_loss(z_mu_global, dist_ref.mu)
+                elif latent_loss_reduction in ['batchmean_sum', 'batch_mean_sum']:
+                    sym_lat_loss = (z_mu_global - dist_ref.mu).pow(2).view(batch_size, -1).sum(-1).mean()
+                elif latent_loss_reduction == 'sum':
+                    sym_lat_loss = (z_mu_global - dist_ref.mu).pow(2).sum()
+                else:
+                    raise ValueError(latent_loss_reduction)
                 output['print/sym_lat_loss'] = sym_lat_loss.item()
                 rec_loss = rec_loss + sym_lat_loss * self.args.symmetry.soft.latent_weight
 
