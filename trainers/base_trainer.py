@@ -234,7 +234,7 @@ class BaseTrainer(ABC):
                     avg_loss = np.array(epoch_loss).mean()
                     epo_loss = []  # clean up epoch loss
                     self.log_loss({'epo_loss': avg_loss},
-                                  writer=writer, step=step)
+                                  writer=writer, step=step, **logs_info)
                     visualize = int(cfg.viz.viz_freq) > 0 and \
                         (step) % int(cfg.viz.viz_freq) == 0
                     vis_recont = visualize
@@ -306,19 +306,34 @@ class BaseTrainer(ABC):
         if writer is None:
             return
 
+        # Include extra scalar-like fields passed via kwargs.
+        if kwargs:
+            train_info = {**train_info, **kwargs}
+
         # Log training information to tensorboard
-        train_info = {
-            k: (v.cpu() if not isinstance(v, float) else v)
-            for k, v in train_info.items()
-        }
+        normalized_info = {}
         for k, v in train_info.items():
+            if torch.is_tensor(v):
+                if v.numel() != 1:
+                    continue
+                v = v.detach().cpu().item()
+            elif isinstance(v, np.ndarray):
+                if v.size != 1:
+                    continue
+                v = float(v.reshape(-1)[0])
+            elif not isinstance(v, (float, int)):
+                continue
+            normalized_info[k] = float(v)
+        for k, v in normalized_info.items():
             if not ('loss' in k):
                 continue
+            metric_name = k.split('print/')[-1] if 'print/' in k else k
             if step is not None:
-                writer.add_scalar('train/' + k, v, step)
+                writer.add_scalar('train/' + metric_name, v, step=step)
             else:
+                epoch = kwargs.get('epoch', None)
                 assert epoch is not None
-                writer.add_scalar('train/' + k, v, epoch)
+                writer.add_scalar('train/' + metric_name, v, step=epoch)
 
     # --------------------------------------------- #
     #   visulization function and sampling function #
