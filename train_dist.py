@@ -146,6 +146,8 @@ def get_args():
                         help='number of gpus')
     parser.add_argument('--master_address', type=str, default='127.0.0.1',
                         help='address for master')
+    parser.add_argument('--master_port', type=str, default=None,
+                        help='port for master')
     parser.add_argument('--seed', type=int, default=1,
                         help='seed used for initialization')
     parser.add_argument('--config', type=str,
@@ -224,6 +226,19 @@ def get_args():
 
 if __name__ == '__main__':
     args, config = get_args()
+    if args.master_port is None:
+        if 'MASTER_PORT' in os.environ:
+            args.master_port = os.environ['MASTER_PORT']
+        else:
+            import socket
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.bind(('127.0.0.1', 0))
+                args.master_port = str(s.getsockname()[1])
+                s.close()
+            except Exception:
+                args.master_port = '6020'
+
     args.ntest = int(args.ntest) if args.ntest is not None else None
     size = args.num_process_per_node
 

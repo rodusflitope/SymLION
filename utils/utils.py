@@ -1129,8 +1129,11 @@ def override_architecture_fields(args, stored_args, logging):
 def init_processes(rank, size, fn, args, config):
     """ Initialize the distributed environment. """
     os.environ['MASTER_ADDR'] = args.master_address
-    os.environ['MASTER_PORT'] = '6020'
-    logger.info('set MASTER_PORT: {}, MASTER_PORT: {}', os.environ['MASTER_ADDR'], os.environ['MASTER_PORT'])
+    if hasattr(args, 'master_port') and args.master_port is not None:
+        os.environ['MASTER_PORT'] = str(args.master_port)
+    elif 'MASTER_PORT' not in os.environ:
+        os.environ['MASTER_PORT'] = '6020'
+    logger.info('set MASTER_ADDR: {}, MASTER_PORT: {}', os.environ['MASTER_ADDR'], os.environ['MASTER_PORT'])
     
     # if args.num_proc_node == 1:  # try to solve the port occupied issue
     #     import socket
