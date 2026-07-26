@@ -268,7 +268,7 @@ def compute_score(output_name, ref_name, batch_size_test=256, device_str='cuda',
     if VIS:
         if exp is not None:
             exp = exp
-        elif writer is not None:
+        elif writer is not None and getattr(writer, 'exp', None) is not None:
             exp = writer.exp
         elif os.path.exists('.comet_api'):
             comet_args = json.load(open('.comet_api', 'r'))
@@ -302,17 +302,20 @@ def compute_score(output_name, ref_name, batch_size_test=256, device_str='cuda',
         # to 3,H,W to H,W,3
         ndarr = grid.mul(255).add_(0.5).clamp_(0, 255).permute(
             1, 2, 0).to('cpu', torch.uint8).numpy()
-        exp.log_image(ndarr, 'samples')
+        if exp is not None:
+            exp.log_image(ndarr, 'samples')
 
         ref_grid = torchvision.utils.make_grid(ref_list)
         # to 3,H,W to H,W,3
         ref_ndarr = ref_grid.mul(255).add_(0.5).clamp_(0, 255).permute(
             1, 2, 0).to('cpu', torch.uint8).numpy()
         ndarr = np.concatenate([ndarr, ref_ndarr], axis=0)
-        exp.log_image(ndarr, 'samples_vs_ref')
+        if exp is not None:
+            exp.log_image(ndarr, 'samples_vs_ref')
 
         torchvision.utils.save_image(img_list, path)
-        logger.info(exp.url)
+        if exp is not None and hasattr(exp, 'url'):
+            logger.info(exp.url)
         logger.info('save vis at {}', path)
     metric2 = 'EMD' if not CD_ONLY else None
     logger.info('print_kwargs: {}', print_kwargs)
@@ -328,7 +331,7 @@ def compute_score(output_name, ref_name, batch_size_test=256, device_str='cuda',
     #     run_time = time.strftime('%m%d-%H%M-%S')
     #     f.write('<< date: %s >>\n' % run_time)
     #     f.write('%s\n%s\n' % (exp.url, msg))
-    results['url'] = exp.url
+    results['url'] = getattr(exp, 'url', '') if exp is not None else ''
     if not skip_write:
         os.makedirs('results', exist_ok=True)
         msg = write_results(
