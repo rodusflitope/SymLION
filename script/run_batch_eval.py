@@ -28,6 +28,18 @@ def parse_args():
         help="Filter by specific dataset (e.g. airplane, chair, car)",
     )
     parser.add_argument(
+        "--exp_folder",
+        type=str,
+        default=None,
+        help="Filter by specific experiment folder name or pattern (e.g. 7b4e91h_*)",
+    )
+    parser.add_argument(
+        "--ckpt",
+        type=str,
+        default=None,
+        help="Direct path or glob pattern to a specific checkpoint .pt file",
+    )
+    parser.add_argument(
         "--checkpoint_name",
         type=str,
         default="epoch_399_iters_*.pt",
@@ -77,12 +89,29 @@ def extract_hash_from_folder(folder_name, dataset):
     return folder_name
 
 
-def find_checkpoints(exp_root, date=None, dataset=None, ckpt_pattern="epoch_399_iters_*.pt"):
+def find_checkpoints(
+    exp_root,
+    date=None,
+    dataset=None,
+    exp_folder=None,
+    ckpt_pattern="epoch_399_iters_*.pt",
+    ckpt=None,
+):
+    if ckpt:
+        if os.path.exists(ckpt):
+            return [ckpt]
+        matched = glob.glob(ckpt)
+        if matched:
+            matched.sort()
+            return matched
+        print(f"Warning: Checkpoint path specified '{ckpt}' not found.")
+        return []
+
     search_path = os.path.join(
         exp_root,
         date if date else "*",
         dataset if dataset else "*",
-        "*",
+        exp_folder if exp_folder else "*",
         "checkpoints",
         ckpt_pattern,
     )
@@ -93,7 +122,7 @@ def find_checkpoints(exp_root, date=None, dataset=None, ckpt_pattern="epoch_399_
             exp_root,
             date if date else "*",
             dataset if dataset else "*",
-            "*",
+            exp_folder if exp_folder else "*",
             "checkpoints",
             "*.pt",
         )
@@ -106,7 +135,12 @@ def find_checkpoints(exp_root, date=None, dataset=None, ckpt_pattern="epoch_399_
 def main():
     args = parse_args()
     checkpoints = find_checkpoints(
-        args.exp_root, args.date, args.dataset, args.checkpoint_name
+        args.exp_root,
+        args.date,
+        args.dataset,
+        args.exp_folder,
+        args.checkpoint_name,
+        args.ckpt,
     )
 
     if not checkpoints:
